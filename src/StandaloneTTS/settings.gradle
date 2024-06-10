@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "AndroidTTS"
+rootProject.name = "StandaloneTTS"
 include ':app'

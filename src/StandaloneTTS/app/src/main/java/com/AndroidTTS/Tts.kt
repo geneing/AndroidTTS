@@ -1,5 +1,5 @@
 // Copyright (c)  2023  Xiaomi Corporation
-package com.AndroidTTS.onnx
+package com.StandaloneTTS
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
@@ -9,6 +9,7 @@ import ai.onnxruntime.providers.NNAPIFlags
 import android.content.res.AssetManager
 import android.content.res.Resources
 import android.util.Log
+import com.StandaloneTTS.onnx.R
 import java.io.File
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
@@ -53,8 +54,8 @@ class OfflineTts(
     resources: Resources,
     var config: OfflineTtsConfig,
 ) {
-    private var ptr: Long
-    private var token2id: Map<Char, Long>
+//    private var ptr: Long
+//    private var token2id: Map<Char, Long>
     private val env : OrtEnvironment
     private val sessionOptions : OrtSession.SessionOptions
 //    private var ortSession : OrtSession
@@ -62,12 +63,8 @@ class OfflineTts(
     private var ortDecoderSession : OrtSession
 
     init {
-        ptr = if (assetManager != null) {
-            newFromAsset(assetManager, config)
-        } else {
-            newFromFile(config)
-        }
-        token2id = getTokenMap(config.model.vits.tokens)
+
+//        token2id = getTokenMap(config.model.vits.tokens)
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
@@ -135,7 +132,7 @@ class OfflineTts(
         val shape = longArrayOf( 1, tokenVector.size.toLong() )
         val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenVector), shape)
         val inputLengths = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(tokenVector.size.toLong())), longArrayOf(1))
-        val scales = OnnxTensor.createTensor(env, FloatBuffer.wrap(floatArrayOf(config.model.vits.noiseScale, config.model.vits.lengthScale, config.model.vits.noiseScaleW)), longArrayOf(3))
+        val scales = OnnxTensor.createTensor(env, FloatBuffer.wrap(floatArrayOf(config.noiseScale, config.lengthScale, config.noiseScaleW)), longArrayOf(3))
         val sidTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(sid.toLong())), longArrayOf(1))
 
         val inputVector = mapOf( "input" to inputTensor, "input_lengths" to inputLengths, "scales" to scales, "sid" to sidTensor )
@@ -156,13 +153,10 @@ class OfflineTts(
         sid: Int = 0,
         speed: Float = 1.0f
     ): GeneratedAudio {
-
-
-        // val objArray = generateImpl(ptr, text = text, sid = sid, speed = speed)
         Log.d("SherpaOnnx", "text: $text")
-        val normText = normalizeText(ptr, text)
+        val normText = normalizeText(text)
         Log.d("SherpaOnnx", "normText: $normText")
-        val tokenIds = convertTextToTokenIds(ptr, normText, "en-us")
+        val tokenIds = convertTextToTokenIds(normText, "en-us")
 
         for( tokenVector in tokenIds ) {
             Log.d("SherpaOnnx", "tokenVector size: $tokenVector.size")
@@ -184,7 +178,7 @@ class OfflineTts(
         speed: Float = 1.0f,
         callback: (samples: FloatArray) -> Unit
     ): GeneratedAudio {
-        val objArray = generateWithCallback(
+        val objArray = generateWithCallbackImpl(
             text = text,
             sid = sid,
             speed = speed,
@@ -251,8 +245,8 @@ class OfflineTts(
 //    private external fun getSampleRate(ptr: Long): Int
 //    private external fun getNumSpeakers(ptr: Long): Int
 //
-//    private external fun normalizeText(ptr: Long, text: String): String
-//    private external fun convertTextToTokenIds(ptr: Long, text: String, voice: String): List< LongArray >
+    private external fun normalizeText(text: String): String
+    private external fun convertTextToTokenIds(text: String, voice: String): List< LongArray >
 
     // The returned array has two entries:
     //  - the first entry is an 1-D float array containing audio samples.
@@ -265,19 +259,23 @@ class OfflineTts(
 //        speed: Float = 1.0f
 //    ): Array<Any>
 
-//    private external fun generateWithCallbackImpl(
-//        ptr: Long,
-//        text: String,
-//        sid: Int = 0,
-//        speed: Float = 1.0f,
-//        callback: (samples: FloatArray) -> Unit
-//    ): Array<Any>
+    private external fun generateWithCallbackImpl(
+        text: String,
+        sid: Int = 0,
+        speed: Float = 1.0f,
+        callback: (samples: FloatArray) -> Unit
+    ): Array<Any>
 
 //    companion object {
 //        init {
 //            System.loadLibrary("sherpa-onnx-jni")
 //        }
 //    }
+    companion object {
+        init {
+            System.loadLibrary("espeak-ng")
+        }
+    }
 }
 
 fun getOfflineTtsConfig(
