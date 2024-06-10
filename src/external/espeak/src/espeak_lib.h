@@ -1,0 +1,8 @@
+//
+// Created by Eugene on 6/10/2024.
+//
+
+#ifndef STANDALONETTS_ESPEAK_LIB_H
+#define STANDALONETTS_ESPEAK_LIB_H
+
+#endif //STANDALONETTS_ESPEAK_LIB_H
