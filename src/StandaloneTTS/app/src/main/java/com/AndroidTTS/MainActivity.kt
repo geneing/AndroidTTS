@@ -203,9 +203,6 @@ class MainActivity : AppCompatActivity() {
         var assets = application.assets
         var resources = application.resources
 
-        // The purpose of such a design is to make the CI test easier
-        // Please see
-        // https://github.com/k2-fsa/sherpa-onnx/blob/master/scripts/apk/generate-tts-apk-script.py
         modelDir = "models"
         ruleFsts = null
         ruleFars = null

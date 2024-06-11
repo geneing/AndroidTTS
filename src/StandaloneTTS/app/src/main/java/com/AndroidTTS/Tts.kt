@@ -25,7 +25,7 @@ data class OfflineTtsConfig(
     var ruleFars: String = "",
     var maxNumSentences: Int = 2,
     var lexicon: String = "",
-    var tokens: String,
+    var tokensFileName: String,
     var dataDir: String = "",
     var dictDir: String = "",
     var modelDir: String = "",
@@ -56,15 +56,16 @@ class OfflineTts(
 ) {
 //    private var ptr: Long
 //    private var token2id: Map<Char, Long>
-    private val env : OrtEnvironment
-    private val sessionOptions : OrtSession.SessionOptions
+    private lateinit var env : OrtEnvironment
+    private lateinit var sessionOptions : OrtSession.SessionOptions
 //    private var ortSession : OrtSession
-    private var ortEncoderSession : OrtSession
-    private var ortDecoderSession : OrtSession
+    private lateinit var ortEncoderSession : OrtSession
+    private lateinit var ortDecoderSession : OrtSession
 
     init {
 
 //        token2id = getTokenMap(config.model.vits.tokens)
+        initEspeak(config.tokensFileName, config.dataDir)
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
@@ -99,7 +100,7 @@ class OfflineTts(
             try {
                 tokenMap[it[0]] = it.split(" ")[1].toLong()
             } catch (e: Exception) {
-                Log.e("SherpaOnnx", "Error parsing token file: $e")
+                Log.e("StandaloneTTS", "Error parsing token file: $e")
             }
         }
         return tokenMap
@@ -153,13 +154,13 @@ class OfflineTts(
         sid: Int = 0,
         speed: Float = 1.0f
     ): GeneratedAudio {
-        Log.d("SherpaOnnx", "text: $text")
+        Log.d("StandaloneTTS", "text: $text")
         val normText = normalizeText(text)
-        Log.d("SherpaOnnx", "normText: $normText")
+        Log.d("StandaloneTTS", "normText: $normText")
         val tokenIds = convertTextToTokenIds(normText, "en-us")
 
         for( tokenVector in tokenIds ) {
-            Log.d("SherpaOnnx", "tokenVector size: $tokenVector.size")
+            Log.d("StandaloneTTS", "tokenVector size: $tokenVector.size")
             val vals = encoder(tokenVector, sid)
 
 //            val samples = generateAudio( tokenVector, sid )
@@ -178,15 +179,21 @@ class OfflineTts(
         speed: Float = 1.0f,
         callback: (samples: FloatArray) -> Unit
     ): GeneratedAudio {
-        val objArray = generateWithCallbackImpl(
-            text = text,
-            sid = sid,
-            speed = speed,
-            callback = callback
-        )
+    //TODO implement callback
+    //        val objArray = generateWithCallbackImpl(
+//            text = text,
+//            sid = sid,
+//            speed = speed,
+//            callback = callback
+//        )
+//        return GeneratedAudio(
+//            samples = objArray[0] as FloatArray,
+//            sampleRate = objArray[1] as Int
+//        )
+
         return GeneratedAudio(
-            samples = objArray[0] as FloatArray,
-            sampleRate = objArray[1] as Int
+            samples = floatArrayOf(0.0f) as FloatArray,
+            sampleRate = 1 as Int
         )
     }
 
@@ -245,7 +252,11 @@ class OfflineTts(
 //    private external fun getSampleRate(ptr: Long): Int
 //    private external fun getNumSpeakers(ptr: Long): Int
 //
-    private external fun normalizeText(text: String): String
+    private external fun initEspeak( tokensPath: String, dataDir: String ): Unit
+    private fun normalizeText(text: String): String {
+        return text
+    }
+
     private external fun convertTextToTokenIds(text: String, voice: String): List< LongArray >
 
     // The returned array has two entries:
@@ -259,13 +270,6 @@ class OfflineTts(
 //        speed: Float = 1.0f
 //    ): Array<Any>
 
-    private external fun generateWithCallbackImpl(
-        text: String,
-        sid: Int = 0,
-        speed: Float = 1.0f,
-        callback: (samples: FloatArray) -> Unit
-    ): Array<Any>
-
 //    companion object {
 //        init {
 //            System.loadLibrary("sherpa-onnx-jni")
@@ -273,7 +277,7 @@ class OfflineTts(
 //    }
     companion object {
         init {
-            System.loadLibrary("espeak-ng")
+            System.loadLibrary("espeak-jni")
         }
     }
 }
@@ -294,7 +298,7 @@ fun getOfflineTtsConfig(
         ruleFars = ruleFars,
         maxNumSentences = 2,
         lexicon = lexicon,
-        tokens = "$modelDir/tokens.txt",
+        tokensFileName = "$modelDir/tokens.txt",
         dataDir = dataDir,
         dictDir = dictDir,
     )

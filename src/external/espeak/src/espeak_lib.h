@@ -17,8 +17,9 @@
             static_cast<int>(__LINE__));                                 \
     fprintf(stderr, ##__VA_ARGS__);                                      \
     fprintf(stderr, "\n");                                               \
-    __android_log_print(ANDROID_LOG_WARN, "sherpa-onnx", ##__VA_ARGS__); \
   } while (0)
+
+//    __android_log_print(ANDROID_LOG_WARN, "sherpa-onnx", ##__VA_ARGS__);
 
 typedef char32_t Phoneme;
 typedef std::map<Phoneme, std::vector<Phoneme>> PhonemeMap;
@@ -59,14 +60,18 @@ struct eSpeakPhonemeConfig {
 typedef char32_t Phoneme;
 typedef std::map<Phoneme, std::vector<Phoneme>> PhonemeMap;
 
-void InitEspeak(const std::string &data_dir);
+void initEspeakLib(const std::string &tokens, const std::string &data_dir);
+std::vector<std::vector<int64_t>> convertTextToTokenIds(
+        const std::string &text, const std::string &voice);
+
+static void InitEspeak(const std::string &data_dir);
 static std::unordered_map<char32_t, int32_t> ReadTokens(std::istream &is);
 
 // Phonemizes text using espeak-ng.
 // Returns phonemes for each sentence as a separate std::vector.
 //
 // Assumes espeak_Initialize has already been called.
-void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
+static void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
                  std::vector<std::vector<Phoneme>> &phonemes);
 
 enum TextCasing {

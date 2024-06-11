@@ -9,6 +9,7 @@ add_library(
         espeak_lib
         SHARED
         src/espeak_lib.cpp
+        src/espeak_jni.cpp
 )
 
 if(MSVC)
@@ -31,7 +32,7 @@ if(NOT DEFINED ESPEAK_NG_DIR)
             PREFIX "${CMAKE_CURRENT_BINARY_DIR}/"
             GIT_REPOSITORY "https://github.com/geneing/espeak-ng.git"
 #            URL "https://github.com/rhasspy/espeak-ng/archive/0f65aa301e0d6bae5e172cc74197d32a6182200f.zip"
-            INSTALL_DIR ${ESPEAK_NG_DIR} #/${ANDROID_ABI}
+            INSTALL_DIR ${ESPEAK_NG_DIR}
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}
             CMAKE_ARGS -DUSE_ASYNC:BOOL=TRUE
             CMAKE_ARGS -DBUILD_SHARED_LIBS:BOOL=TRUE
@@ -80,6 +81,7 @@ target_link_directories(
 target_link_libraries(
         espeak_lib
         espeak-ng
+        log
 )
 
 target_compile_features(espeak_lib PUBLIC cxx_std_17)

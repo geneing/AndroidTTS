@@ -21,7 +21,7 @@
 
 static std::unordered_map<char32_t, int32_t> token2id_;
 
-void init_espeak_lib(
+void initEspeakLib(
         const std::string &tokens, const std::string &data_dir) {
     {
         std::ifstream is(tokens);
@@ -30,7 +30,7 @@ void init_espeak_lib(
     InitEspeak(data_dir);
 }
 
-void InitEspeak(const std::string &data_dir) {
+static void InitEspeak(const std::string &data_dir) {
     static std::once_flag init_flag;
     std::call_once(init_flag, [data_dir]() {
         int32_t result =
@@ -44,7 +44,6 @@ void InitEspeak(const std::string &data_dir) {
         }
     });
 }
-
 
 static std::unordered_map<char32_t, int32_t> ReadTokens(std::istream &is) {
     std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
@@ -127,7 +126,7 @@ static std::vector<int64_t> PiperPhonemesToIds(
     return ans;
 }
 
-std::vector<std::vector<int64_t>> ConvertTextToTokenIds(
+std::vector<std::vector<int64_t>> convertTextToTokenIds(
         const std::string &text, const std::string &voice /*= ""*/) {
     eSpeakPhonemeConfig config;
 
@@ -160,7 +159,7 @@ std::vector<std::vector<int64_t>> ConvertTextToTokenIds(
 std::map<std::string, PhonemeMap> DEFAULT_PHONEME_MAP = {
         {"pt-br", {{U'c', {U'k'}}}}};
 
-void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
+static void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
                  std::vector<std::vector<Phoneme>> &phonemes) {
 
     auto voice = config.voice;
