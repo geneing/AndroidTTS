@@ -18,7 +18,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags ''
-                arguments "-DBUILD_SHARED_LIBS=ON", "-DBUILD_ESPEAK_NG_TESTS=OFF", "-DUSE_ASYNC=OFF", "-DUSE_MBROLA=OFF", "-DUSE_LIBSONIC=OFF", "-DUSE_LIBPCAUDIO=OFF", "-DUSE_KLATT=OFF", "-DUSE_SPEECHPLAYER=OFF", "-DEXTRA_cmn=ON", "-DEXTRA_ru=ON"
+//                arguments "-DBUILD_SHARED_LIBS=ON", "-DBUILD_ESPEAK_NG_TESTS=OFF", "-DUSE_ASYNC=OFF", "-DUSE_MBROLA=OFF", "-DUSE_LIBSONIC=OFF", "-DUSE_LIBPCAUDIO=OFF", "-DUSE_KLATT=OFF", "-DUSE_SPEECHPLAYER=OFF", "-DEXTRA_cmn=ON", "-DEXTRA_ru=ON"
             }
         }
     }

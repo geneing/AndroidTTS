@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 val filename = application.filesDir.absolutePath + "/generated.wav"
-                val ok = audio.samples.size > 0 && audio.save(filename)
+                val ok = audio.samples.size > 0  // && audio.save(filename)
                 if (ok) {
                     runOnUiThread {
                         play.isEnabled = true

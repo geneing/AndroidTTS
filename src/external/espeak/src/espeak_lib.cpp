@@ -14,7 +14,6 @@ void InitEspeak(const std::string &data_dir) {
         int32_t result =
                 espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, data_dir.c_str(), 0);
         if (result != 22050) {
-
             exit(-1);
         }
     });
