@@ -12,10 +12,13 @@ import android.util.Log
 import com.StandaloneTTS.onnx.R
 import java.io.File
 import java.nio.FloatBuffer
+import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.EnumSet
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 data class OfflineTtsConfig(
     var numThreads: Int = 1,
@@ -69,7 +72,8 @@ class OfflineTts(
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
-        sessionOptions.addNnapi(EnumSet.of(NNAPIFlags.USE_FP16))
+
+//        sessionOptions.addNnapi(EnumSet.of(NNAPIFlags.USE_FP16))
 
 //        val model = readModel(config.model.vits.model)
 //        ortSession = env.createSession(model, sessionOptions)
@@ -129,7 +133,7 @@ class OfflineTts(
 //        return samples
 //    }
 
-    private fun encoder( tokenVector: LongArray, sid: Int ): OnnxTensor {
+    private fun encoder( tokenVector: LongArray, sid: Int ): OrtSession.Result {
         val shape = longArrayOf( 1, tokenVector.size.toLong() )
         val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenVector), shape)
         val inputLengths = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(tokenVector.size.toLong())), longArrayOf(1))
@@ -138,34 +142,44 @@ class OfflineTts(
 
         val inputVector = mapOf( "input" to inputTensor, "input_lengths" to inputLengths, "scales" to scales, "sid" to sidTensor )
         val encoderOutput = ortEncoderSession.run(inputVector)
-        val encoderOutputTensor : OnnxTensor
-
-        encoderOutput.use {
-            encoderOutputTensor = encoderOutput.get(0) as OnnxTensor
-            val shape = encoderOutputTensor.info.shape
-
-        }
-
-        return encoderOutputTensor
+        return encoderOutput
     }
 ;
+    @OptIn(ExperimentalTime::class)
     fun generate(
         text: String,
-        sid: Int = 0,
+        sid: Int = 1,
         speed: Float = 1.0f
     ): GeneratedAudio {
+
         Log.d("StandaloneTTS", "text: $text")
-        val normText = normalizeText(text)
-        Log.d("StandaloneTTS", "normText: $normText")
-        val tokenIds = convertTextToTokenIds(normText, "en-us")
+        val (normText, normalizationTime) = measureTimedValue{ normalizeText(text) }
+        Log.d("StandaloneTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}: $normText")
+        val (tokenIds, tokenizationTime) = measureTimedValue { convertTextToTokenIds(normText, "en-us") }
+        Log.d("StandaloneTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}: num tokens: ${tokenIds.size}")
 
         for( tokenVector in tokenIds ) {
-            Log.d("StandaloneTTS", "tokenVector size: $tokenVector.size")
-            val vals = encoder(tokenVector, sid)
+            val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector, sid) }
+            Log.d("StandaloneTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}: tokenVector size: ${tokenVector.size}")
 
-//            val samples = generateAudio( tokenVector, sid )
-//            val generatedAudio = GeneratedAudio( samples = samples, sampleRate = sampleRate() )
-//            return generatedAudio
+            val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor
+            val y_mask: OnnxTensor = encoderOutput.get(1) as OnnxTensor
+            val dec_args: OnnxTensor = encoderOutput.get(2) as OnnxTensor
+
+            val n_frames = z.info.shape[2]
+            val range = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(0, n_frames)), longArrayOf(2))
+
+            val inputVectorDecoder = mapOf( "z" to z, "y_mask" to y_mask, "range" to range, "g" to dec_args )
+
+            val (decoderOutput, decodingTime) = measureTimedValue { ortDecoderSession.run(inputVectorDecoder) }
+            val samples = ((decoderOutput?.get(0)?.value) as? Array<*>)!!.filterIsInstance<Array<FloatArray>>()
+            val generatedAudio = GeneratedAudio( samples = samples[0][0], sampleRate = config.sampleRate )
+            Log.d("StandaloneTTS", "decodingTime: ${decodingTime.inWholeMilliseconds}ms, sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
+
+            encoderOutput.close()
+            decoderOutput.close()
+
+            return generatedAudio
         }
         return GeneratedAudio(
             samples = floatArrayOf(0.0f) as FloatArray,
@@ -196,37 +210,6 @@ class OfflineTts(
             sampleRate = 1 as Int
         )
     }
-
-//    fun generate(
-//        text: String,
-//        sid: Int = 0,
-//        speed: Float = 1.0f
-//    ): GeneratedAudio {
-//        val objArray = generateImpl(ptr, text = text, sid = sid, speed = speed)
-//        return GeneratedAudio(
-//            samples = objArray[0] as FloatArray,
-//            sampleRate = objArray[1] as Int
-//        )
-//    }
-//
-//    fun generateWithCallback(
-//        text: String,
-//        sid: Int = 0,
-//        speed: Float = 1.0f,
-//        callback: (samples: FloatArray) -> Unit
-//    ): GeneratedAudio {
-//        val objArray = generateWithCallbackImpl(
-//            ptr,
-//            text = text,
-//            sid = sid,
-//            speed = speed,
-//            callback = callback
-//        )
-//        return GeneratedAudio(
-//            samples = objArray[0] as FloatArray,
-//            sampleRate = objArray[1] as Int
-//        )
-//    }
 
     fun allocate(assetManager: AssetManager? = null) {
     }
@@ -277,7 +260,9 @@ class OfflineTts(
 //    }
     companion object {
         init {
-            System.loadLibrary("espeak-jni")
+            System.loadLibrary("espeak_lib")
+            System.loadLibrary("espeak-ng")
+            System.loadLibrary("ucd")
         }
     }
 }

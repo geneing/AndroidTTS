@@ -5,6 +5,9 @@ project(espeak_lib C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${JNI_LIB_PATH}/app/src/main/jniLibs/${ANDROID_ABI}" )
+
 add_library(
         espeak_lib
         SHARED
@@ -85,3 +88,4 @@ target_link_libraries(
 )
 
 target_compile_features(espeak_lib PUBLIC cxx_std_17)
+
