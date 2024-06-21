@@ -13,5 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SherpaOnnxTtsEngine"
+rootProject.name = "AndroidTTSengine"
 include(":app")
+include(":StandaloneTTS")

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.k2fsa.sherpa.onnx.tts.engine">
+    package="com.AndroidTTS.engine">
 
     <application
         android:allowBackup="true"
@@ -11,8 +11,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SherpaOnnxTtsEngine"
-        tools:targetApi="31">
+        android:theme="@style/Theme.Material3.DayNight"
+        tools:targetApi="34">
         <activity
             android:name=".GetSampleText"
             android:exported="true"
@@ -62,7 +62,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.SherpaOnnxTtsEngine">
+            android:theme="@style/Theme.AndroidTTSEngine">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

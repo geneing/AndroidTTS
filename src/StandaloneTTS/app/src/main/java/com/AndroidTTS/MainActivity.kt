@@ -148,21 +148,17 @@ class MainActivity : AppCompatActivity() {
 
         play.isEnabled = false
         Thread {
-            if(false) {
-                val audio = tts.generateWithCallback(
+            if(true) {
+                tts.generateWithCallback(
                     text = textStr,
                     sid = sidInt,
                     speed = speedFloat,
                     callback = this::callback
                 )
 
-                val filename = application.filesDir.absolutePath + "/generated.wav"
-                val ok = audio.samples.size > 0  // && audio.save(filename)
-                if (ok) {
-                    runOnUiThread {
-                        play.isEnabled = true
-                        track.stop()
-                    }
+                runOnUiThread {
+                    play.isEnabled = true
+                    track.stop()
                 }
             }
             else {

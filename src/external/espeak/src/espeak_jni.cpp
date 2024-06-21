@@ -34,30 +34,30 @@ Java_com_StandaloneTTS_OfflineTts_convertTextToTokenIds(JNIEnv *env, jobject thi
 
     const char *p_text = env->GetStringUTFChars(text, nullptr);
     const char *p_voice = env->GetStringUTFChars(voice, nullptr);
-    LOGI("string is: %s, voice is: %s", p_text, p_voice);
+//    LOGI("string is: %s, voice is: %s", p_text, p_voice);
     std::vector<std::vector<int64_t>> textTokens = convertTextToTokenIds(std::string(p_text), std::string(p_voice));
-    LOGI("past tokenization");
+//    LOGI("past tokenization");
 
     jclass arrayListClass = env->FindClass("java/util/ArrayList");
-    LOGI("past arrayListClass");
+//    LOGI("past arrayListClass");
     jmethodID arrayListConstructor = env->GetMethodID(arrayListClass, "<init>", "()V");
-    LOGI("past arrayListConstructor");
+//    LOGI("past arrayListConstructor");
     jmethodID addMethod = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-    LOGI("past addMethod");
+//    LOGI("past addMethod");
 
     // The list we're going to return:
     jobject list = env->NewObject(arrayListClass, arrayListConstructor);
-    LOGI("past list");
+//    LOGI("past list");
 
     for(auto& tokenArray : textTokens) {
-        LOGI("adding tokenArray size: %lu", tokenArray.size());
+//        LOGI("adding tokenArray size: %lu", tokenArray.size());
         jlongArray longArray = env->NewLongArray(tokenArray.size());
-        LOGI("past longArray");
+//        LOGI("past longArray");
         env->SetLongArrayRegion(longArray, 0, tokenArray.size(), tokenArray.data());
-        LOGI("past SetLongArrayRegion");
+//        LOGI("past SetLongArrayRegion");
         // Add it to the list
         env->CallBooleanMethod(list, addMethod, longArray);
-        LOGI("past CallBooleanMethod");
+//        LOGI("past CallBooleanMethod");
     }
     return list;
 }
