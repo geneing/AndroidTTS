@@ -47,21 +47,18 @@ object TtsEngine {
     private var assets: AssetManager? = null
 
     init {
-        // The purpose of such a design is to make the CI test easier
-        // Please see
-        // https://github.com/k2-fsa/sherpa-onnx/blob/master/scripts/apk/generate-tts-apk-script.py
         modelDir = "models"
         ruleFsts = null
         ruleFars = null
         lexicon = null
         dataDir = "models/espeak-ng-data"
         dictDir = null
-        lang = null
+        lang = "eng"
     }
 
 
     fun createTts(context: Context) {
-        Log.i(TAG, "Init Next-gen Kaldi TTS")
+        Log.i(TAG, "Init AndroidTTS")
         if (tts == null) {
             initTts(context)
         }
@@ -79,8 +76,8 @@ object TtsEngine {
         if (dictDir != null) {
             val newDir = copyDataDir(context, modelDir!!)
             modelDir = "$newDir/$modelDir"
-            dictDir = "$modelDir/dict"
-            ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
+            dictDir = "" //""$modelDir/dict"
+            ruleFsts = "" //""$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
         }
 
         val config = getOfflineTtsConfig(

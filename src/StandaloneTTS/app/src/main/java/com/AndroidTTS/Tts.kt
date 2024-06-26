@@ -5,6 +5,7 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtLoggingLevel
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.OrtSession.SessionOptions
 import ai.onnxruntime.providers.NNAPIFlags
 
 import android.content.res.AssetManager
@@ -73,10 +74,10 @@ class OfflineTts(
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
-        sessionOptions.setLoggerId("TTSOnnx")
+        sessionOptions.setLoggerId("TTS")
 //        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
-//        sessionOptions.addNnapi() //EnumSet.of(NNAPIFlags.USE_FP16)
-//        sessionOptions.addArmNN(false)
+        sessionOptions.setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT)
+//        sessionOptions.addNnapi(EnumSet.of(NNAPIFlags.USE_FP16))
 //        val model = readModel(config.model.vits.model)
 //        ortSession = env.createSession(model, sessionOptions)
 

@@ -32,11 +32,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-
-
-import java.io.File
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
 
 const val TAG = "AndroidTTSengine"
+
+
+fun playAudio(audioData: FloatArray, sampleRate: Int) {
+    val minBufferSize = AudioTrack.getMinBufferSize(
+        sampleRate,
+        AudioFormat.CHANNEL_OUT_MONO,
+        AudioFormat.ENCODING_PCM_FLOAT
+    )
+
+    val audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+
+    val audioFormat = AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+        .setSampleRate(sampleRate)
+        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+        .build()
+
+    val audioTrack = AudioTrack(
+        audioAttributes,
+        audioFormat,
+        minBufferSize,
+        AudioTrack.MODE_STREAM,
+        AudioManager.AUDIO_SESSION_ID_GENERATE
+    )
+
+    audioTrack.play()
+
+    audioTrack.write(audioData, 0, audioData.size, AudioTrack.WRITE_BLOCKING)
+    audioTrack.stop()
+    audioTrack.release()
+}
 
 class MainActivity : ComponentActivity() {
     // TODO(fangjun): Save settings in ttsViewModel
@@ -126,8 +160,7 @@ class MainActivity : ComponentActivity() {
                                                     sid = TtsEngine.speakerId,
                                                     speed = TtsEngine.speed,
                                                 )
-                                                //TODO play audio here
-
+                                                playAudio(audio.samples, audio.sampleRate)
                                             }
                                         }) {
                                         Text("Test")
