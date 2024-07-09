@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.StandaloneTTS.onnx'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId 'com.StandaloneTTS'
         minSdk 30
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -44,7 +44,7 @@ android {
     buildToolsVersion '34.0.0'
     externalNativeBuild {
         cmake {
-            path file('../../external/espeak/CMakeLists.txt')
+            path file('../../external/CMakeLists.txt')
             version '3.22.1'
         }
     }
@@ -62,6 +62,6 @@ dependencies {
     implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.11.0'
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }
