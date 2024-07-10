@@ -65,11 +65,12 @@ class OfflineTts(
 //    private var ortSession : OrtSession
     private lateinit var ortEncoderSession : OrtSession
     private lateinit var ortDecoderSession : OrtSession
+    private lateinit var normalizer: Normalizer
 
     init {
 
-//        token2id = getTokenMap(config.model.vits.tokens)
         initEspeak(config.tokensFileName, config.dataDir)
+        normalizer = Normalizer(config.ruleFars)
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
@@ -112,7 +113,7 @@ class OfflineTts(
             try {
                 tokenMap[it[0]] = it.split(" ")[1].toLong()
             } catch (e: Exception) {
-                Log.e("StandaloneTTS", "Error parsing token file: $e")
+                Log.e("AndroidTTS", "Error parsing token file: $e")
             }
         }
         return tokenMap
@@ -137,15 +138,15 @@ class OfflineTts(
         speed: Float = 1.0f
     ): GeneratedAudio {
 
-        Log.d("StandaloneTTS", "text: $text")
+        Log.d("AndroidTTS", "text: $text")
         val (normText, normalizationTime) = measureTimedValue{ normalizeText(text) }
-        Log.d("StandaloneTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}ms: $normText")
+        Log.d("AndroidTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}ms: $normText")
         val (tokenIds, tokenizationTime) = measureTimedValue { convertTextToTokenIds(normText, "en-us") }
-        Log.d("StandaloneTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
+        Log.d("AndroidTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
 
         for( tokenVector in tokenIds ) {
             val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector, sid) }
-            Log.d("StandaloneTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
+            Log.d("AndroidTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
 
             val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor
             val y_mask: OnnxTensor = encoderOutput.get(1) as OnnxTensor
@@ -159,7 +160,7 @@ class OfflineTts(
             val (decoderOutput, decodingTime) = measureTimedValue { ortDecoderSession.run(inputVectorDecoder) }
             val samples = ((decoderOutput?.get(0)?.value) as? Array<*>)!!.filterIsInstance<Array<FloatArray>>()
             val generatedAudio = GeneratedAudio( samples = samples[0][0], sampleRate = config.sampleRate )
-            Log.d("StandaloneTTS", "decodingTime: ${decodingTime.inWholeMilliseconds}ms, sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
+            Log.d("AndroidTTS", "decodingTime: ${decodingTime.inWholeMilliseconds}ms, sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
 
             encoderOutput.close()
             decoderOutput.close()
@@ -183,15 +184,15 @@ class OfflineTts(
         val chunk: Long = 100
         var start: Long = 0
 
-        Log.d("StandaloneTTS", "text: $text")
+        Log.d("AndroidTTS", "text: $text")
         val (normText, normalizationTime) = measureTimedValue{ normalizeText(text) }
-        Log.d("StandaloneTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}ms: $normText")
+        Log.d("AndroidTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}ms: $normText")
         val (tokenIds, tokenizationTime) = measureTimedValue { convertTextToTokenIds(normText, "en-us") }
-        Log.d("StandaloneTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
+        Log.d("AndroidTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
 
         for( tokenVector in tokenIds ) {
             val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector, sid) }
-            Log.d("StandaloneTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
+            Log.d("AndroidTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
 
             val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor
             val y_mask: OnnxTensor = encoderOutput.get(1) as OnnxTensor
@@ -222,17 +223,15 @@ class OfflineTts(
                 samples = samples.sliceArray(IntRange((256*padding).toInt(), samples.size-1))
 
                 Log.d(
-                    "StandaloneTTS",
+                    "AndroidTTS",
                     "decodingTime: ${decodingTime.inWholeMilliseconds}ms, PerFrameTime: ${(decodingTime.inWholeMilliseconds).toFloat()/numFramesThisChunk}ms, sound duration: ${1000.0f * samples.size / (1.0f * config.sampleRate)}"
                 )
 
                 val callbackTime = measureTimedValue { callback(samples) }
-                Log.d("StandaloneTTS", "callbackTime: ${callbackTime.duration.inWholeMilliseconds}ms")
+                Log.d("AndroidTTS", "callbackTime: ${callbackTime.duration.inWholeMilliseconds}ms")
                 start = endFrame
                 decoderOutput.close()
             }
-
-
             encoderOutput.close()
         }
     }
@@ -248,44 +247,35 @@ class OfflineTts(
 
     fun release() = finalize()
 
-//    private external fun newFromAsset(
-//        assetManager: AssetManager,
-//        config: OfflineTtsConfig,
-//    ): Long
-//
-//    private external fun newFromFile(
-//        config: OfflineTtsConfig,
-//    ): Long
-//
-//    private external fun delete(ptr: Long)
-//    private external fun getSampleRate(ptr: Long): Int
-//    private external fun getNumSpeakers(ptr: Long): Int
-//
     private external fun initEspeak( tokensPath: String, dataDir: String ): Unit
     private fun normalizeText(text: String): String {
-        return text
+        return normalizer.normalize(text)
     }
 
     private external fun convertTextToTokenIds(text: String, voice: String): List< LongArray >
 
-    // The returned array has two entries:
-    //  - the first entry is an 1-D float array containing audio samples.
-    //    Each sample is normalized to the range [-1, 1]
-    //  - the second entry is the sample rate
-//    private external fun generateImpl(
-//        ptr: Long,
-//        text: String,
-//        sid: Int = 0,
-//        speed: Float = 1.0f
-//    ): Array<Any>
+    class Normalizer constructor( farList: String) {
+        private var ptr: Long = 0
+        init{
+            ptr = initNormalizer(farList)
+        }
+        fun normalize(text: String): String {
+            return normalizeImpl(ptr, text)
+        }
 
-//    companion object {
-//        init {
-//            System.loadLibrary("sherpa-onnx-jni")
-//        }
-//    }
+        inner class C {
+            protected fun finalize() {
+                cleanupNormalizer(ptr)
+            }
+        }
+        private external fun initNormalizer(farList: String): Long
+        private external fun normalizeImpl(ptr: Long, text: String): String
+        private external fun cleanupNormalizer(ptr: Long): Unit
+    }
+
     companion object {
         init {
+            System.loadLibrary("openfst_lib")
             System.loadLibrary("espeak_lib")
             System.loadLibrary("espeak-ng")
             System.loadLibrary("ucd")

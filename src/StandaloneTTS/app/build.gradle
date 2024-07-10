@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.StandaloneTTS.onnx'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.StandaloneTTS'

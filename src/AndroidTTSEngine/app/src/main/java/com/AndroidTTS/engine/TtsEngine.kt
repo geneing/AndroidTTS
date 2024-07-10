@@ -71,13 +71,14 @@ object TtsEngine {
             val newDir = copyDataDir(context, modelDir!!)
             modelDir = "$newDir/$modelDir"
             dataDir = "$newDir/$dataDir"
+            ruleFars = "$modelDir/en_tn_True_deterministic_cased__tokenize.far,$modelDir/en_tn_True_deterministic_verbalizer.far,$modelDir/en_tn_post_processing.far"
         }
 
         if (dictDir != null) {
             val newDir = copyDataDir(context, modelDir!!)
             modelDir = "$newDir/$modelDir"
             dictDir = "" //""$modelDir/dict"
-            ruleFsts = "" //""$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
+            ruleFars = "$modelDir/en_tn_True_deterministic_cased__tokenize.far,$modelDir/en_tn_True_deterministic_verbalizer.far,$modelDir/en_tn_post_processing.far"
         }
 
         val config = getOfflineTtsConfig(

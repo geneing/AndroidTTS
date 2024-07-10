@@ -66,11 +66,12 @@ class OfflineTts(
 //    private var ortSession : OrtSession
     private lateinit var ortEncoderSession : OrtSession
     private lateinit var ortDecoderSession : OrtSession
+    private lateinit var normalizer: Normalizer
 
     init {
 
-//        token2id = getTokenMap(config.model.vits.tokens)
         initEspeak(config.tokensFileName, config.dataDir)
+        normalizer = Normalizer(config.ruleFars)
 
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
@@ -133,7 +134,7 @@ class OfflineTts(
     ): GeneratedAudio {
 
         Log.d("StandaloneTTS", "text: $text")
-        val (normText, normalizationTime) = measureTimedValue{ normalizeText(text) }
+        val (normText, normalizationTime) = measureTimedValue{ normalizer.normalize(text) }
         Log.d("StandaloneTTS", "normalizationTime: ${normalizationTime.inWholeMilliseconds}ms: $normText")
         val (tokenIds, tokenizationTime) = measureTimedValue { convertTextToTokenIds(normText, "en-us") }
         Log.d("StandaloneTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
@@ -226,10 +227,9 @@ class OfflineTts(
                 start = endFrame
                 decoderOutput.close()
             }
-
-
             encoderOutput.close()
         }
+
     }
 
     fun allocate(assetManager: AssetManager? = null) {
@@ -263,29 +263,34 @@ class OfflineTts(
 
     private external fun convertTextToTokenIds(text: String, voice: String): List< LongArray >
 
-    // The returned array has two entries:
-    //  - the first entry is an 1-D float array containing audio samples.
-    //    Each sample is normalized to the range [-1, 1]
-    //  - the second entry is the sample rate
-//    private external fun generateImpl(
-//        ptr: Long,
-//        text: String,
-//        sid: Int = 0,
-//        speed: Float = 1.0f
-//    ): Array<Any>
+    class Normalizer constructor( farList: String) {
+        private var ptr: Long = 0
+        init{
+            ptr = initNormalizer(farList)
+        }
+        fun normalize(text: String): String {
+            return normalizeImpl(ptr, text)
+        }
 
-//    companion object {
-//        init {
-//            System.loadLibrary("sherpa-onnx-jni")
-//        }
-//    }
+        inner class C {
+            protected fun finalize() {
+                cleanupNormalizer(ptr)
+            }
+        }
+        private external fun initNormalizer(farList: String): Long
+        private external fun normalizeImpl(ptr: Long, text: String): String
+        private external fun cleanupNormalizer(ptr: Long): Unit
+    }
+
     companion object {
         init {
+            System.loadLibrary("openfst_lib")
             System.loadLibrary("espeak_lib")
             System.loadLibrary("espeak-ng")
             System.loadLibrary("ucd")
         }
     }
+
 }
 
 fun getOfflineTtsConfig(

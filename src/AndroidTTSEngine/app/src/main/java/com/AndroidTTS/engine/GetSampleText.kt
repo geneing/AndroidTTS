@@ -43,7 +43,8 @@ fun getSampleText(lang: String): String {
         }
 
         "eng" -> {
-            text = "This is a text-to-speech engine using next generation Kaldi"
+//            text = "This is a text-to-speech engine using next generation Kaldi"
+            text = "2788 San Tomas Expy, Santa Clara, CA 95051. 708 N 1st St, San City."
         }
 
         "est" -> {
