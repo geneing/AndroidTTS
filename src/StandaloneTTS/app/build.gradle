@@ -5,11 +5,11 @@ plugins {
 
 android {
     namespace 'com.StandaloneTTS.onnx'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId 'com.StandaloneTTS'
-        minSdk 30
+        minSdk 34
         targetSdk 35
         versionCode 1
         versionName "1.0"
@@ -41,7 +41,6 @@ android {
         includeInApk true
         includeInBundle true
     }
-    buildToolsVersion '34.0.0'
     externalNativeBuild {
         cmake {
             path file('../../external/CMakeLists.txt')
@@ -53,14 +52,12 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support.constraint:constraint-layout:2.0.4'
-    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-// https://mvnrepository.com/artifact/com.microsoft.onnxruntime/onnxruntime-android
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.18.0'
-// https://mvnrepository.com/artifact/com.microsoft.onnxruntime/onnxruntime-extensions-android
-    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.11.0'
-
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:latest.release'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:latest.release'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'

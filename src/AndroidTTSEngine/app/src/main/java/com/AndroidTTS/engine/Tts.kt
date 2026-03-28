@@ -5,19 +5,21 @@ import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtLoggingLevel
 import ai.onnxruntime.OrtSession
-import ai.onnxruntime.providers.NNAPIFlags
+import ai.onnxruntime.OrtSession.SessionOptions
 
+import android.content.Context
 import android.content.res.AssetManager
 import android.content.res.Resources
 import android.util.Log
+import android.util.LruCache
 import com.AndroidTTS.engine.R
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.nio.FloatBuffer
-import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.EnumSet
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
@@ -36,7 +38,7 @@ data class OfflineTtsConfig(
     var noiseScale: Float = 0.667f,
     var noiseScaleW: Float = 0.8f,
     var lengthScale: Float = 1.0f,
-    val sampleRate: Int = 22050,
+    val sampleRate: Int = 24000,
 )
 
 class GeneratedAudio(
@@ -54,11 +56,12 @@ class GeneratedAudio(
 }
 
 class OfflineTts(
-    assetManager: AssetManager? = null,
-    resources: Resources,
+    val context: Context,
     var config: OfflineTtsConfig,
 ) {
-//    private var ptr: Long
+    private var voiceCache: LruCache<String, List<List<FloatArray>>>
+
+    //    private var ptr: Long
 //    private var token2id: Map<Char, Long>
     private lateinit var env : OrtEnvironment
     private lateinit var sessionOptions : OrtSession.SessionOptions
@@ -66,8 +69,10 @@ class OfflineTts(
     private lateinit var ortEncoderSession : OrtSession
     private lateinit var ortDecoderSession : OrtSession
     private lateinit var normalizer: Normalizer
+    private lateinit var vocab : Map<Char, Int>
 
     init {
+        voiceCache = LruCache<String, List<List<FloatArray>>>(4) // Max 4 items in the cache
 
         initEspeak(config.tokensFileName, config.dataDir)
         normalizer = Normalizer(config.ruleFars)
@@ -75,17 +80,28 @@ class OfflineTts(
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
         sessionOptions.setLoggerId("TTSOnnx")
-//        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
-//        sessionOptions.addNnapi() //EnumSet.of(NNAPIFlags.USE_FP16)
-//        sessionOptions.addArmNN(false)
-//        val model = readModel(config.model.vits.model)
-//        ortSession = env.createSession(model, sessionOptions)
+        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
+        sessionOptions.addXnnpack( mapOf("intra_op_num_threads" to "6") );
+        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
+        sessionOptions.setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT)
 
-        val encoder = readModel(resources, R.raw.encoder)
-        ortEncoderSession = env.createSession(encoder, sessionOptions)
+        val pathToModel = context.filesDir.path + "/models/kokoro-quant.onnx"
+        ortEncoderSession = env.createSession(pathToModel, sessionOptions)
+        Log.i("AndroidTTS", "Loaded: ${ortEncoderSession}")
+    }
 
-        val decoder = readModel(resources, R.raw.decoder)
-        ortDecoderSession = env.createSession(decoder, sessionOptions)
+    @kotlinx.serialization.ExperimentalSerializationApi
+    private fun getVoiceFromJson( name: String ): List<List<FloatArray>> {
+        val voicesJsonInputStream = File(context.filesDir.path + "/models/voices.json").inputStream()
+        val voicesMap = Json.decodeFromStream<Map<String, List<List<FloatArray>>>>(voicesJsonInputStream)
+        val voiceVector = voicesMap[name]!!
+
+        return voiceVector
+    }
+
+    @kotlinx.serialization.ExperimentalSerializationApi
+    private fun getVoice(name: String): List<List<FloatArray>> {
+        return voiceCache.get(name) ?: getVoiceFromJson(name).also { voiceCache.put(name, it) }
     }
 
     private fun readModel( path: String ): ByteArray {
@@ -95,8 +111,12 @@ class OfflineTts(
         return Files.readAllBytes(Paths.get(path))
     }
 
-    private fun readModel( resources:Resources, modelID: Int ): ByteArray {
-        return resources.openRawResource(modelID).readBytes()
+    private fun readModel( resources:Resources, modelID: Int ): java.io.InputStream {
+        return resources.openRawResource(modelID)
+    }
+
+    private fun readJson( resources: Resources, jsonID: Int ): String {
+        return resources.openRawResource(jsonID).bufferedReader().use { it.readText() }
     }
 
     fun numSpeakers(): Int {
@@ -119,14 +139,15 @@ class OfflineTts(
         return tokenMap
     }
 
-    private fun encoder( tokenVector: LongArray, sid: Int ): OrtSession.Result {
+    private fun encoder( tokenVector: LongArray, voice: List<List<FloatArray>>, speed: Float ): OrtSession.Result {
         val shape = longArrayOf( 1, tokenVector.size.toLong() )
+        val currentStyleVector = voice[tokenVector.size][0]
         val inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenVector), shape)
-        val inputLengths = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(tokenVector.size.toLong())), longArrayOf(1))
-        val scales = OnnxTensor.createTensor(env, FloatBuffer.wrap(floatArrayOf(config.noiseScale, config.lengthScale, config.noiseScaleW)), longArrayOf(3))
-        val sidTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(sid.toLong())), longArrayOf(1))
+        val styleTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(currentStyleVector), longArrayOf(1, currentStyleVector.size.toLong()))
 
-        val inputVector = mapOf( "input" to inputTensor, "input_lengths" to inputLengths, "scales" to scales, "sid" to sidTensor )
+        val speedTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(floatArrayOf(speed)), longArrayOf(1))
+
+        val inputVector = mapOf( "tokens" to inputTensor, "style" to styleTensor, "speed" to speedTensor )
         val encoderOutput = ortEncoderSession.run(inputVector)
         return encoderOutput
     }
@@ -134,7 +155,7 @@ class OfflineTts(
     @OptIn(ExperimentalTime::class)
     fun generate(
         text: String,
-        sid: Int = 1,
+        sid: String = "af",
         speed: Float = 1.0f
     ): GeneratedAudio {
 
@@ -145,25 +166,28 @@ class OfflineTts(
         Log.d("AndroidTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
 
         for( tokenVector in tokenIds ) {
-            val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector, sid) }
+            val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector = tokenVector, voice = getVoice(sid), speed=speed) }
             Log.d("AndroidTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
 
-            val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor
-            val y_mask: OnnxTensor = encoderOutput.get(1) as OnnxTensor
-            val dec_args: OnnxTensor = encoderOutput.get(2) as OnnxTensor
+//            val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor
+//            val y_mask: OnnxTensor = encoderOutput.get(1) as OnnxTensor
+//            val dec_args: OnnxTensor = encoderOutput.get(2) as OnnxTensor
+//
+//            val n_frames = z.info.shape[2]
+//            val range = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(0, n_frames)), longArrayOf(2))
+//
+//            val inputVectorDecoder = mapOf( "z" to z, "y_mask" to y_mask, "range" to range, "g" to dec_args )
+//
+//            val (decoderOutput, decodingTime) = measureTimedValue { ortDecoderSession.run(inputVectorDecoder) }
+//            val samples = ((decoderOutput?.get(0)?.value) as? Array<*>)!!.filterIsInstance<Array<FloatArray>>()
+            val samples = ((encoderOutput.get(0)?.value) as? FloatArray) !!
 
-            val n_frames = z.info.shape[2]
-            val range = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(0, n_frames)), longArrayOf(2))
-
-            val inputVectorDecoder = mapOf( "z" to z, "y_mask" to y_mask, "range" to range, "g" to dec_args )
-
-            val (decoderOutput, decodingTime) = measureTimedValue { ortDecoderSession.run(inputVectorDecoder) }
-            val samples = ((decoderOutput?.get(0)?.value) as? Array<*>)!!.filterIsInstance<Array<FloatArray>>()
-            val generatedAudio = GeneratedAudio( samples = samples[0][0], sampleRate = config.sampleRate )
-            Log.d("AndroidTTS", "decodingTime: ${decodingTime.inWholeMilliseconds}ms, sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
+            val generatedAudio = GeneratedAudio( samples = samples, sampleRate = config.sampleRate )
+//            Log.d("AndroidTTS", "decodingTime: ${decodingTime.inWholeMilliseconds}ms, sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
+            Log.d("AndroidTTS", "decodingTime: sound duration: ${1000.0f*generatedAudio.samples.size/(1.0f*generatedAudio.sampleRate)}")
 
             encoderOutput.close()
-            decoderOutput.close()
+//            decoderOutput.close()
 
             return generatedAudio
         }
@@ -176,7 +200,7 @@ class OfflineTts(
     @OptIn(ExperimentalTime::class)
     fun generateWithCallback(
         text: String,
-        sid: Int = 0,
+        sid: String = "af",
         speed: Float = 1.0f,
         callback: (samples: FloatArray) -> Unit
     ): Unit {
@@ -191,7 +215,7 @@ class OfflineTts(
         Log.d("AndroidTTS", "tokenizationTime: ${tokenizationTime.inWholeMilliseconds}ms: num tokens: ${tokenIds.size}")
 
         for( tokenVector in tokenIds ) {
-            val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector, sid) }
+            val (encoderOutput, encodingTime) = measureTimedValue { encoder(tokenVector = tokenVector, voice = getVoice(sid), speed=speed) }
             Log.d("AndroidTTS", "encodingTime: ${encodingTime.inWholeMilliseconds}ms: tokenVector size: ${tokenVector.size}")
 
             val z : OnnxTensor = encoderOutput.get(0) as OnnxTensor

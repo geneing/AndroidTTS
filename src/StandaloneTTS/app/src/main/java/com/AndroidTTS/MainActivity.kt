@@ -210,13 +210,9 @@ class MainActivity : AppCompatActivity() {
             val newDir = copyDataDir(modelDir!!)
             modelDir = newDir + "/" + modelDir
             dataDir = newDir + "/" + dataDir
-            ruleFars = "$modelDir/en_tn_True_deterministic_cased__tokenize.far,$modelDir/date.en_tn_True_deterministic_verbalizer.far,$modelDir/en_tn_post_processing.far"
-        }
-
-        if (dictDir != null) {
-            val newDir = copyDataDir(modelDir!!)
-            modelDir = newDir + "/" + modelDir
-            dictDir = modelDir + "/" + "dict"
+            if (dictDir != null) {
+                dictDir = "$modelDir/dict"
+            }
             ruleFars = "$modelDir/en_tn_True_deterministic_cased__tokenize.far,$modelDir/date.en_tn_True_deterministic_verbalizer.far,$modelDir/en_tn_post_processing.far"
         }
 
@@ -229,7 +225,7 @@ class MainActivity : AppCompatActivity() {
             ruleFars = ruleFars ?: "",
         )
 
-        tts = OfflineTts(assetManager = assets, resources = resources, config = config)
+        tts = OfflineTts(context = this, config = config)
     }
 
 
@@ -237,7 +233,7 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "data dir is $dataDir")
         copyAssets(dataDir)
 
-        val newDataDir = application.getExternalFilesDir(null)!!.absolutePath
+        val newDataDir = application.filesDir.absolutePath
         Log.i(TAG, "newDataDir: $newDataDir")
         return newDataDir
     }
@@ -249,7 +245,7 @@ class MainActivity : AppCompatActivity() {
             if (assets!!.isEmpty()) {
                 copyFile(path)
             } else {
-                val fullPath = "${application.getExternalFilesDir(null)}/$path"
+                val fullPath = "${application.filesDir}/$path"
                 val dir = File(fullPath)
                 dir.mkdirs()
                 for (asset in assets.iterator()) {
@@ -265,7 +261,7 @@ class MainActivity : AppCompatActivity() {
     private fun copyFile(filename: String) {
         try {
             val istream = application.assets.open(filename)
-            val newFilename = application.getExternalFilesDir(null).toString() + "/" + filename
+            val newFilename = application.filesDir.toString() + "/" + filename
             val ostream = FileOutputStream(newFilename)
             // Log.i(TAG, "Copying $filename to $newFilename")
             val buffer = ByteArray(1024)

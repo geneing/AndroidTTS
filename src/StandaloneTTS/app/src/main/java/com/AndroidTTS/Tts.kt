@@ -7,6 +7,7 @@ import ai.onnxruntime.OrtLoggingLevel
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OrtSession.SessionOptions
 import ai.onnxruntime.providers.NNAPIFlags
+import android.content.Context
 
 import android.content.res.AssetManager
 import android.content.res.Resources
@@ -21,6 +22,7 @@ import java.nio.file.Paths
 import java.util.EnumSet
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
+import kotlinx.serialization.json.Json
 
 data class OfflineTtsConfig(
     var numThreads: Int = 1,
@@ -37,7 +39,7 @@ data class OfflineTtsConfig(
     var noiseScale: Float = 0.667f,
     var noiseScaleW: Float = 0.8f,
     var lengthScale: Float = 1.0f,
-    val sampleRate: Int = 22050,
+    val sampleRate: Int = 24000,
 )
 
 class GeneratedAudio(
@@ -55,12 +57,9 @@ class GeneratedAudio(
 }
 
 class OfflineTts(
-    assetManager: AssetManager? = null,
-    resources: Resources,
+    private val context: Context,
     var config: OfflineTtsConfig,
 ) {
-//    private var ptr: Long
-//    private var token2id: Map<Char, Long>
     private lateinit var env : OrtEnvironment
     private lateinit var sessionOptions : OrtSession.SessionOptions
 //    private var ortSession : OrtSession
@@ -76,28 +75,25 @@ class OfflineTts(
         env = OrtEnvironment.getEnvironment()
         sessionOptions = OrtSession.SessionOptions()
         sessionOptions.setLoggerId("TTS")
-//        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
+        sessionOptions.addXnnpack( mapOf("intra_op_num_threads" to "6") );
+        sessionOptions.setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE)
         sessionOptions.setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT)
 //        sessionOptions.addNnapi(EnumSet.of(NNAPIFlags.USE_FP16))
 //        val model = readModel(config.model.vits.model)
 //        ortSession = env.createSession(model, sessionOptions)
 
-        val encoder = readModel(resources, R.raw.encoder)
-        ortEncoderSession = env.createSession(encoder, sessionOptions)
+        ortEncoderSession = env.createSession(context.filesDir.path + "/models/kokoro-quant.onnx", sessionOptions)
 
-        val decoder = readModel(resources, R.raw.decoder)
-        ortDecoderSession = env.createSession(decoder, sessionOptions)
+//        val decoder = readModel(resources, R.raw.decoder)
+//        ortDecoderSession = env.createSession(decoder, sessionOptions)
     }
 
     private fun readModel( path: String ): ByteArray {
-
-//        val modelID = R.raw.encoder
-//        return resources.openRawResource(modelID).readBytes()
         return Files.readAllBytes(Paths.get(path))
     }
 
-    private fun readModel( resources:Resources, modelID: Int ): ByteArray {
-        return resources.openRawResource(modelID).readBytes()
+    private fun readJson( resources: Resources, jsonID: Int ): String {
+        return resources.openRawResource(jsonID).bufferedReader().use { it.readText() }
     }
 
     fun getTokenMap(tokenFile: String): Map<Char, Long> {
@@ -304,7 +300,7 @@ fun getOfflineTtsConfig(
     return OfflineTtsConfig(
         numThreads = 4,
         debug = false,
-        provider = "nnapi", //"cpu",
+        provider = "cpu", //"nnapi",
         ruleFsts = ruleFsts,
         ruleFars = ruleFars,
         maxNumSentences = 2,

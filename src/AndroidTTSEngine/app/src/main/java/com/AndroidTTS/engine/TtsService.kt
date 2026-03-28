@@ -99,6 +99,56 @@ class TtsService : TextToSpeechService() {
 
     override fun onStop() {}
 
+//    override fun onSynthesizeText(request: SynthesisRequest?, callback: SynthesisCallback?) {
+//        if (request == null || callback == null) {
+//            return
+//        }
+//        val language = request.language
+//        val country = request.country
+//        val variant = request.variant
+//        val text = request.charSequenceText.toString()
+//
+//        val ret = onIsLanguageAvailable(language, country, variant)
+//        if (ret == TextToSpeech.LANG_NOT_SUPPORTED) {
+//            callback.error()
+//            return
+//        }
+//        Log.i(TAG, "text: $text")
+//        val tts = TtsEngine.tts!!
+//
+//        // Note that AudioFormat.ENCODING_PCM_FLOAT requires API level >= 24
+//        // callback.start(tts.sampleRate(), AudioFormat.ENCODING_PCM_FLOAT, 1)
+//
+//        callback.start(tts.sampleRate(), AudioFormat.ENCODING_PCM_16BIT, 1)
+//
+//        if (text.isBlank() || text.isEmpty()) {
+//            callback.done()
+//            return
+//        }
+//
+//        val ttsCallback = { floatSamples: FloatArray ->
+//            // convert FloatArray to ByteArray
+//            val samples = floatArrayToByteArray(floatSamples)
+//            val maxBufferSize: Int = callback.maxBufferSize
+//            var offset = 0
+//            while (offset < samples.size) {
+//                val bytesToWrite = Math.min(maxBufferSize, samples.size - offset)
+//                callback.audioAvailable(samples, offset, bytesToWrite)
+//                offset += bytesToWrite
+//            }
+//        }
+//
+//        Log.i(TAG, "text: $text")
+//        tts.generateWithCallback(
+//            text = text,
+//            sid = TtsEngine.speakerId,
+//            speed = TtsEngine.speed,
+//            callback = ttsCallback,
+//        )
+//
+//        callback.done()
+//    }
+
     override fun onSynthesizeText(request: SynthesisRequest?, callback: SynthesisCallback?) {
         if (request == null || callback == null) {
             return
@@ -126,27 +176,16 @@ class TtsService : TextToSpeechService() {
             return
         }
 
-        val ttsCallback = { floatSamples: FloatArray ->
-            // convert FloatArray to ByteArray
-            val samples = floatArrayToByteArray(floatSamples)
-            val maxBufferSize: Int = callback.maxBufferSize
-            var offset = 0
-            while (offset < samples.size) {
-                val bytesToWrite = Math.min(maxBufferSize, samples.size - offset)
-                callback.audioAvailable(samples, offset, bytesToWrite)
-                offset += bytesToWrite
-            }
-
-        }
-
         Log.i(TAG, "text: $text")
-        tts.generateWithCallback(
+
+        val audio = tts.generate(
             text = text,
             sid = TtsEngine.speakerId,
-            speed = TtsEngine.speed,
-            callback = ttsCallback,
+            speed = TtsEngine.speed
         )
 
+        val byteArray = floatArrayToByteArray(audio.samples)
+        callback.audioAvailable(byteArray, 0, byteArray.size)
         callback.done()
     }
 

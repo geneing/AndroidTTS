@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(OpenFST C CXX)
-
+SET(CMAKE_BUILD_TYPE Release)
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${JNI_LIB_PATH}/app/src/main/jniLibs/${ANDROID_ABI}" )
 
 SET(OPENFST_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/openfst-1.8.3)

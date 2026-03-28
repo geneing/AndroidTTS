@@ -111,13 +111,13 @@ class MainActivity : ComponentActivity() {
                                         value = TtsEngine.speakerIdState.value.toString(),
                                         onValueChange = {
                                             if (it.isEmpty() || it.isBlank()) {
-                                                TtsEngine.speakerId = 0
+                                                TtsEngine.speakerId = "af"
                                             } else {
                                                 try {
-                                                    TtsEngine.speakerId = it.toString().toInt()
+                                                    TtsEngine.speakerId = it.toString()
                                                 } catch (ex: NumberFormatException) {
                                                     Log.i(TAG, "Invalid input: $it")
-                                                    TtsEngine.speakerId = 0
+                                                    TtsEngine.speakerId = "af"
                                                 }
                                             }
                                         },
@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
                                             } else {
                                                 val audio = TtsEngine.tts!!.generate(
                                                     text = testText,
-                                                    sid = TtsEngine.speakerId,
+                                                    sid = "af", //TODO: TtsEngine.speakerId,
                                                     speed = TtsEngine.speed,
                                                 )
                                                 playAudio(audio.samples, audio.sampleRate)
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
                                     Button(
                                         modifier = Modifier.padding(20.dp),
                                         onClick = {
-                                            TtsEngine.speakerId = 0
+                                            TtsEngine.speakerId = "af"
                                             TtsEngine.speed = 1.0f
                                             testText = ""
                                         }) {

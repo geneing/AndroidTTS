@@ -11,6 +11,7 @@
 #include <mutex>  // NOLINT
 #include <locale>
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -104,24 +105,24 @@ static std::vector<int64_t> PiperPhonemesToIds(
         const std::vector<Phoneme> &phonemes) {
     // see
     // https://github.com/rhasspy/piper-phonemize/blob/master/src/phoneme_ids.hpp#L17
-    int32_t pad = token2id.at(U'_');
-    int32_t bos = token2id.at(U'^');
-    int32_t eos = token2id.at(U'$');
+//    int32_t pad = token2id.at(U'_');
+//    int32_t bos = token2id.at(U'^');
+//    int32_t eos = token2id.at(U'$');
 
     std::vector<int64_t> ans;
     ans.reserve(phonemes.size());
 
-    ans.push_back(bos);
+//    ans.push_back(bos);
     for (auto p : phonemes) {
         if (token2id.count(p)) {
             ans.push_back(token2id.at(p));
-            ans.push_back(pad);
+//            ans.push_back(pad);
         } else {
             ESPEAK_LOGE("Skip unknown phonemes. Unicode codepoint: \\U+%04x.",
                              static_cast<uint32_t>(p));
         }
     }
-    ans.push_back(eos);
+//    ans.push_back(eos);
 
     return ans;
 }
@@ -188,6 +189,10 @@ static void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
                 (const void **)&inputTextPointer,
                 /*textmode*/ espeakCHARS_AUTO,
                 /*phonememode = IPA*/ 0x02, &terminator));
+
+        std::cerr << "clausePhonemes: " << clausePhonemes << std::endl;
+        std::cout << "clausePhonemes: " << clausePhonemes << std::endl;
+        ESPEAK_LOGE("clausePhonemes: %s", clausePhonemes.c_str());
 
         // Decompose, e.g. "ç" -> "c" + "̧"
         auto phonemesNorm = una::norm::to_nfd_utf8(clausePhonemes);
